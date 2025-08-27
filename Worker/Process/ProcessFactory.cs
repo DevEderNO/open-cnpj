@@ -113,7 +113,6 @@ public class EmpresasProcessor(AppDbContext dbContext) : BaseFileProcessor
     protected override async Task ProcessFileContentAsync(FileModel file)
     {
         using var reader = ReaderFactory.Open(File.OpenRead($"{AppDomain.CurrentDomain.BaseDirectory}/Files/{file.FileName}"), new ReaderOptions());
-        //var raizCnpjs = dbContext.Empresas.Select(x => x.CnpjBasico.RaizCnpj).AsNoTracking().ToList();
         while (reader.MoveToNextEntry())
         {
             if (reader.Entry.IsDirectory) continue;
@@ -165,7 +164,6 @@ public class EstabelecimentosProcessor(AppDbContext dbContext) : BaseFileProcess
     protected override async Task ProcessFileContentAsync(FileModel file)
     {
         using var reader = ReaderFactory.Open(File.OpenRead($"{AppDomain.CurrentDomain.BaseDirectory}/Files/{file.FileName}"), new ReaderOptions());
-        //var raizCnpjs = dbContext.Empresas.Select(x => x.CnpjBasico.RaizCnpj).AsNoTracking().ToList();
         while (reader.MoveToNextEntry())
         {
             var estabelecimentos = new List<Estabelecimento>();
