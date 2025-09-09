@@ -2,12 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 using Infra.JsonConverters;
-using Infra.ValueConverters;
 using Infra.ValueObjects;
 
 namespace Domain.Models;
 
 public class Estabelecimento(
+    VoCnpj cnpj,
     VoRaizCnpj cnpjBasico,
     string cnpjOrdem,
     string cnpjDv,
@@ -19,8 +19,7 @@ public class Estabelecimento(
     string? nomeCidadeNoExterior,
     string? pais,
     DateTime dataInicioAtividade,
-    string cnaeFiscalPrincipal,
-    List<VoCnae>? cnaeFiscalSecundaria,
+    VoCnae cnaeFiscalPrincipalId,
     string? tipoLogradouro,
     string logradouro,
     string numero,
@@ -40,7 +39,9 @@ public class Estabelecimento(
     DateTime? dataSituacaoEspecial,
     DateTime modificationDate)
 {
-    [Key, JsonConverter(typeof(JcRaizCnpj)), StringLength(8)]
+    [Key, JsonConverter(typeof(JcCnpj)), StringLength(14)]
+    public VoCnpj Cnpj { get; set; } = cnpj;
+    [JsonConverter(typeof(JcRaizCnpj)), StringLength(8)]
     public VoRaizCnpj CnpjBasico { get; set; } = cnpjBasico;
     [MaxLength(4)]
     public string CnpjOrdem { get; set; } = cnpjOrdem;
@@ -60,10 +61,9 @@ public class Estabelecimento(
     [MaxLength(4)]
     public string? Pais { get; set; } = pais;
     public DateTime DataInicioAtividade { get; set; } = dataInicioAtividade;
-    [MaxLength(7)]
-    public string CnaeFiscalPrincipal { get; set; } = cnaeFiscalPrincipal;
-    [MaxLength(2000), JsonConverter(typeof(JcList<VoCnae>))]
-    public List<VoCnae>? CnaeFiscalSecundaria { get; set; } = cnaeFiscalSecundaria;
+    [JsonConverter(typeof(JcCnae)), StringLength(7)]   
+    public VoCnae CnaeFiscalPrincipalId { get; set; } = cnaeFiscalPrincipalId;
+    public virtual List<EstabelecimentoCnaeSecundario> EstabelecimentoCnaesSecundarios { get; set; } = new();
     [MaxLength(255)]
     public string? TipoLogradouro { get; set; } = tipoLogradouro;
     [MaxLength(255)]
@@ -88,7 +88,7 @@ public class Estabelecimento(
     public string? Ddd2 { get; set; } = ddd2;
     [MaxLength(9)]
     public string? Telefone2 { get; set; } = telefone2;
-    [MaxLength(2)]
+    [MaxLength(3)]
     public string? DddFax { get; set; } = dddFax;
     [MaxLength(9)]
     public string? Fax { get; set; } = fax;
@@ -97,6 +97,6 @@ public class Estabelecimento(
     [MaxLength(255)]
     public string? SituacaoEspecial { get; set; } = situacaoEspecial;
     public DateTime? DataSituacaoEspecial { get; set; } = dataSituacaoEspecial;
-    [Required, Column(TypeName = "timestamp without time zone")]
+    [Required]
     public DateTime ModificationDate { get; set; } = modificationDate;
 }

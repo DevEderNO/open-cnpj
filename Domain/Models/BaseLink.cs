@@ -7,6 +7,6 @@ public class BaseLink(string url, DateTime modificationDate)
 {
     [Key, StringLength(255)]
     public string Url { get; set; } = url;
-    [Required, Column(TypeName = "timestamp without time zone")]
+    [Required]
     public DateTime ModificationDate { get; set; } = modificationDate;
 }

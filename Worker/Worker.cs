@@ -3,6 +3,7 @@ using Data;
 using Domain.Enumerators;
 using Domain.Models;
 using Infra.Utils;
+using Infra.ValueObjects;
 using Worker.Process;
 using File = Domain.Models.File;
 
@@ -114,20 +115,22 @@ public class Worker : BackgroundService
     }
 
     private async Task ProcessFiles(){
-        var files = _dbContext.Files.ToList();
+        //var files = _dbContext.Files.ToList();
         var factory = new ProcessFactory(_dbContext);
-        Dictionary<FileType, List<File>> filesByType = [];
-        var fileTypeNames = Enum.GetNames<FileType>().Order().ToList();
-        foreach (var file in files){
-            var fileType = fileTypeNames.FirstOrDefault(x => file.Url.Contains(x));
-            if (fileType == null) continue;
-            if (!filesByType.ContainsKey(Enum.Parse<FileType>(fileType))) 
-                filesByType[Enum.Parse<FileType>(fileType)] = [];
-            filesByType[Enum.Parse<FileType>(fileType)].Add(file);
-        }
-        foreach (var fileType in filesByType.OrderBy(x => x.Key)){
-            await factory.ProcessFilesAsync(fileType.Value, fileType.Key);
-        }
+        //Dictionary<FileType, List<File>> filesByType = [];
+        //var fileTypeNames = Enum.GetNames<FileType>().Order().ToList();
+        //foreach (var file in files){
+        //    var fileType = fileTypeNames.FirstOrDefault(x => file.Url.Contains(x));
+        //    if (fileType == null) continue;
+        //    if (!filesByType.ContainsKey(Enum.Parse<FileType>(fileType))) 
+        //        filesByType[Enum.Parse<FileType>(fileType)] = [];
+        //    filesByType[Enum.Parse<FileType>(fileType)].Add(file);
+        //}
+        //foreach (var fileType in filesByType.OrderBy(x => x.Key)){
+        //    await factory.ProcessFilesAsync(fileType.Value, fileType.Key);
+        //}
+        await factory.ProcessFilesAsync([new File($"{AppDomain.CurrentDomain.BaseDirectory}/Files/Cnaes.zip",DateTime.Now, new VoFileSize("22K"))], FileType.Cnaes);
+        await factory.ProcessFilesAsync([new File($"{AppDomain.CurrentDomain.BaseDirectory}/Files/Estabelecimentos1.zip",DateTime.Now, new VoFileSize("1.7G"))], FileType.Estabelecimentos);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

@@ -10,6 +10,8 @@ public class DCnae(VoCnae cnae, string descricao, DateTime modificationDate)
 {
     [Key,JsonConverter(typeof(JcCnae)), StringLength(7)] public VoCnae Cnae { get; set; } = cnae;
     [Required, MaxLength(255)] public string Descricao { get; set; } = descricao;
-    [Required, Column(TypeName = "timestamp without time zone")]
+    [Required]
     public DateTime ModificationDate { get; set; } = modificationDate;
+    public List<Estabelecimento> Estabelecimentos { get; set; } = new();
+    public List<EstabelecimentoCnaeSecundario> EstabelecimentoCnaesSecundarios { get; set; } = new();
 }

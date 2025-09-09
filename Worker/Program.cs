@@ -5,7 +5,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddHostedService<Worker.Worker>();
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServerConnection"));
 });
 
 var host = builder.Build();

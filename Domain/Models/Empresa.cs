@@ -16,6 +16,6 @@ public class Empresa(VoRaizCnpj cnpjBasico, string razaoSocial, string naturezaJ
   [Required] public decimal CapitalSocial { get; set; } = capitalSocial;
   [Required, StringLength(2)] public string PorteEmpresa { get; set; } = porteEmpresa;
   [Required, MaxLength(255)] public string EnteFederativoResponsavel { get; set; } = enteFederativoResponsavel;
-  [Required, Column(TypeName = "timestamp without time zone")]
+  [Required]
   public DateTime ModificationDate { get; set; } = modificationDate;
 }

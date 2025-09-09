@@ -75,8 +75,8 @@ public class CnaesProcessor(AppDbContext dbContext) : BaseFileProcessor
                 Console.SetCursorPosition(0, Console.CursorTop);
                 Console.Write($"Progresso: {file.Progress * 100:F2}%");
             }
-            dbContext.Files.Update(file);
-            await dbContext.SaveChangesAsync();
+            //dbContext.Files.Update(file);
+            //await dbContext.SaveChangesAsync();
         }
 
         var cnaesDb = dbContext.Cnaes.ToList();
@@ -85,22 +85,21 @@ public class CnaesProcessor(AppDbContext dbContext) : BaseFileProcessor
 
         if (newCnaes.Count != 0)
         {
-            dbContext.Cnaes.AddRange(newCnaes);
+            await dbContext.Cnaes.BulkInsertAsync(newCnaes);
         }
 
         if (updatedCnaes.Count != 0)
         {
             foreach (var updatedCnae in updatedCnaes)
             {
-                var cnae = cnaes.First(x => x.Cnae == updatedCnae.Cnae);
+                var cnae = cnaes.First(x => x.Cnae.Code == updatedCnae.Cnae.Code);
                 updatedCnae.Descricao = cnae.Descricao;
                 updatedCnae.ModificationDate = cnae.ModificationDate;
             }
 
-            dbContext.Cnaes.UpdateRange(updatedCnaes);
+            await dbContext.Cnaes.BulkUpdateAsync(updatedCnaes);
         }
 
-        await dbContext.SaveChangesAsync();
         Console.WriteLine("CNAEs saved");
         await Task.CompletedTask;
     }
@@ -164,6 +163,9 @@ public class EstabelecimentosProcessor(AppDbContext dbContext) : BaseFileProcess
     protected override async Task ProcessFileContentAsync(FileModel file)
     {
         using var reader = ReaderFactory.Open(File.OpenRead($"{AppDomain.CurrentDomain.BaseDirectory}/Files/{file.FileName}"), new ReaderOptions());
+        // Em vez de carregar todos os CNAEs
+        var cnaes = dbContext.Cnaes.ToList();
+        var cnaesSecudariosPorCnpj = new Dictionary<VoCnpj, List<DCnae>>();
         while (reader.MoveToNextEntry())
         {
             var estabelecimentos = new List<Estabelecimento>();
@@ -178,22 +180,26 @@ public class EstabelecimentosProcessor(AppDbContext dbContext) : BaseFileProcess
                 var line = await sr.ReadLineAsync();
                 if (line == null) continue;
                 var data = line[1..^1].Split("\";\"").Select(x => x.Trim()).ToList();
-                Console.WriteLine($"Estabelecimento: {data[0] + data[1] + data[2] + data[3]} - {data[4]}");
+                //Console.WriteLine($"Estabelecimento: {data[0] + data[1] + data[2] + data[3]} - {data[4]}");
                 //if (raizCnpjs.Contains(data[0])) continue;
-                estabelecimentos.Add(new Estabelecimento(
+                cnaesSecudariosPorCnpj.Add($"{data[0]}{data[1]}{data[2]}", cnaes.Where(x => data[12].Split(",").Select(y => y.Trim()).Contains(x.Cnae.Code)).ToList());
+                DateTime.TryParseExact(data[6], "yyyyMMdd", null, DateTimeStyles.None, out var dataSituacaoCadastral);
+                DateTime.TryParseExact(data[10], "yyyyMMdd", null, DateTimeStyles.None, out var dataInicioAtividade);
+                DateTime.TryParseExact(data[29], "yyyyMMdd", null, DateTimeStyles.None, out var dataSituacaoEspecial);
+                var estabelecimento = new Estabelecimento(
+                    $"{data[0]}{data[1]}{data[2]}",
                     data[0],
                     data[1],
                     data[2],
                     data[3],
                     data[4],
                     data[5],
-                    DateTime.ParseExact(data[6], "yyyyMMdd", CultureInfo.InvariantCulture),
+                    dataSituacaoCadastral,
                     data[7],
                     data[8],
                     data[9],
-                    DateTime.ParseExact(data[10], "yyyyMMdd", CultureInfo.InvariantCulture),
+                    dataInicioAtividade,
                     data[11],
-                    [.. data[12].Split(",").Select(x => new VoCnae(x))],
                     data[13],
                     data[14],
                     data[15],
@@ -210,18 +216,47 @@ public class EstabelecimentosProcessor(AppDbContext dbContext) : BaseFileProcess
                     data[26],
                     new VoEmail(data[27]),
                     data[28],
-                    DateTime.ParseExact(data[29], "yyyyMMdd", CultureInfo.InvariantCulture),
+                    dataSituacaoEspecial == DateTime.MinValue ? null : dataSituacaoEspecial,
                     file.ModificationDate
-                ));
+                );
+
+                estabelecimentos.Add(estabelecimento);
 
                 file.Progress = (float)(progressStream.BytesRead / totalSize);
                 Console.SetCursorPosition(0, Console.CursorTop);
                 Console.Write($"Progresso: {file.Progress * 100:F2}%   ");
 
-                if (estabelecimentos.Count < 100000 && !sr.EndOfStream) continue;
-                await dbContext.Estabelecimentos.BulkInsertAsync(estabelecimentos);
-                dbContext.Files.Update(file);
-                await dbContext.SaveChangesAsync();
+                if (estabelecimentos.Count < 10000 && !sr.EndOfStream) continue;
+                // Em vez de AddRange + SaveChangesAsync
+                await dbContext.Estabelecimentos.WhereNotExistsBulkInsertAsync(estabelecimentos);
+                //dbContext.Files.Update(file);
+                //await dbContext.SaveChangesAsync();
+                // Processe os CNAEs secundários em lote separado
+                var cnaesSecundariosParaInserir = new List<EstabelecimentoCnaeSecundario>();
+
+                // Adicione ao lote em vez de inserir imediatamente
+                foreach (var estab in estabelecimentos)
+                {
+                    var cnaesSecundarios = cnaesSecudariosPorCnpj.GetValueOrDefault(estab.Cnpj, []);
+                    if (cnaesSecundarios.Count > 0)
+                    {
+                        cnaesSecundariosParaInserir.AddRange(
+                            cnaesSecundarios.Select(x => new EstabelecimentoCnaeSecundario
+                            {
+                                CnaeSecundario = x,
+                                Estabelecimento = estab,
+                            }));
+                    }
+                }
+
+                // Insira em lote
+                if (cnaesSecundariosParaInserir.Count > 0)
+                {
+                    await dbContext.EstabelecimentoCnaesSecundarios.WhereNotExistsBulkInsertAsync(cnaesSecundariosParaInserir);
+                }
+
+                estabelecimentos.Clear();
+                cnaesSecudariosPorCnpj.Clear();
             }
         }
 

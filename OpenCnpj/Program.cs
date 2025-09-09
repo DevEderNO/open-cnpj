@@ -19,7 +19,7 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
-    options.UseNpgsql(builder.Configuration.GetConnectionString("PostgresConnection"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServerConnection"));
 });
 
 var app = builder.Build();
