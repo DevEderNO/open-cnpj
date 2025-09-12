@@ -16,6 +16,8 @@ public class File(
     public VoFileSize Size { get; set; } = size;
     
     public float Progress { get; set; } = 0;
+    
+    public long LineNumber { get; set; } = 0;
 
     public string FileName => Path.GetFileName(Url);
 }
